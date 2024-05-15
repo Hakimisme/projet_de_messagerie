@@ -5,5 +5,5 @@ docker run -it --rm --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3.13-ma
 3 Créer les utilisateurs sur rabbitmq :
   http://localhost:15672/  
   se connecter avec guest guest  
-  aller dans admin et add user
+  aller dans admin et add user  
 4 lancer les scripts log.py et client.py  
