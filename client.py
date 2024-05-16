@@ -1,5 +1,4 @@
-import os
-import sys
+
 import threading
 import pika
 from tkinter import *
@@ -8,6 +7,8 @@ import json
 import datetime
 import pika.delivery_mode
 import requests
+
+# pip install requests customtkinter pika 
 
 class Messagerie:
     def __init__(self):
@@ -182,6 +183,7 @@ class Messagerie:
     def getAllUser(self):
         api_url = "http://localhost:15672/api/users/"
         response = requests.get(api_url, auth=(self.input_utilisateur.get(), self.input_mot_de_passe.get()))
+        print(response.json())
         for user in response.json():
             self.AllUser.append(str(user["name"]))
         self.AllUser.remove(self.input_utilisateur.get())
