@@ -1,11 +1,9 @@
-
 import threading
 import pika
 from tkinter import *
 import customtkinter
 import json
 import datetime
-import pika.delivery_mode
 import requests
 
 # pip install requests customtkinter pika 
@@ -14,68 +12,141 @@ class Messagerie:
     def __init__(self):
         self.connected_user = []
         self.AllUser = []
-        self.current_discussion = "all" 
+        self.current_discussion = "all"
         self.current_user = "all"
         self.discussion_list = {}
         self.users = {}
         self.init_graphique()
         self.root.mainloop()
-    
-    
+
     def init_graphique(self):
-        # Interface graphique
+        # Configuration de la fenêtre principale
         self.root = customtkinter.CTk()
-        self.root.title("Projet messagerie")
-        self.root.geometry("500x800")
-        self.message_bienvenue = customtkinter.CTkLabel(self.root, text="Veuillez vous connecter pour commencer à discuter")
-        self.textbox = customtkinter.CTkTextbox(self.root,width=300, height=400)
-        self.textbox.configure(state="disabled")
-        self.entry = customtkinter.CTkEntry(self.root)
-        self.button1 = customtkinter.CTkButton(self.root, text="Envoie", command=self.envoie)
-        self.label_utilisateur = customtkinter.CTkLabel(self.root, text="Utilisateur")
-        self.input_utilisateur = customtkinter.CTkEntry(self.root)
-        self.label_mot_de_passe = customtkinter.CTkLabel(self.root, text="Mot de passe")
-        self.input_mot_de_passe = customtkinter.CTkEntry(self.root, show="*")
-        self.btn_connexion = customtkinter.CTkButton(self.root, text="Connexion", command=self.logging)
-        self.label_utilisateur.pack()
-        self.input_utilisateur.pack()
-        self.label_mot_de_passe.pack()
-        self.input_mot_de_passe.pack()
-        self.btn_connexion.pack()
-        self.message_bienvenue.pack()
+        self.root.title("Projet Messagerie")
+        self.root.geometry("600x900")
         
-    # Connexion à RabbitMQ
+        # Paramètres de design modernes
+        customtkinter.set_appearance_mode("dark")
+        customtkinter.set_default_color_theme("blue")
+
+        # Étiquette de message de bienvenue
+        self.message_bienvenue = customtkinter.CTkLabel(
+            self.root, 
+            text="Veuillez vous connecter pour commencer",
+            text_color="#FFFFFF", 
+            font=("Helvetica", 16)
+        )
+        
+        # Zone de texte pour afficher les messages
+        self.textbox = customtkinter.CTkTextbox(
+            self.root, 
+            width=400, 
+            height=500,
+            border_color="#1E1E1E",
+            corner_radius=10
+        )
+        self.textbox.configure(state="disabled")
+
+        # Champ de saisie pour les messages
+        self.entry = customtkinter.CTkEntry(
+            self.root,
+            placeholder_text="Ecrivez votre message ici...",
+            width=400,
+            border_color="#1E1E1E",
+            corner_radius=10
+        )
+        
+        # Bouton pour envoyer les messages
+        self.button1 = customtkinter.CTkButton(
+            self.root, 
+            text="Envoyer", 
+            command=self.envoie,
+            fg_color="#1E90FF",
+            corner_radius=10,
+            text_color="#FFFFFF",
+            font=("Helvetica", 14)
+        )
+        
+        # Étiquette et champ de saisie pour le nom d'utilisateur
+        self.label_utilisateur = customtkinter.CTkLabel(
+            self.root, 
+            text="Nom d'utilisateur",
+            text_color="#FFFFFF",
+            font=("Helvetica", 14)
+        )
+        
+        self.input_utilisateur = customtkinter.CTkEntry(
+            self.root,
+            placeholder_text="Nom d'utilisateur",
+            width=300,
+            border_color="#1E1E1E",
+            corner_radius=10
+        )
+        
+        # Étiquette et champ de saisie pour le mot de passe
+        self.label_mot_de_passe = customtkinter.CTkLabel(
+            self.root, 
+            text="Mot de passe",
+            text_color="#FFFFFF",
+            font=("Helvetica", 14)
+        )
+        
+        self.input_mot_de_passe = customtkinter.CTkEntry(
+            self.root,
+            show="*",
+            placeholder_text="Mot de passe",
+            width=300,
+            border_color="#1E1E1E",
+            corner_radius=10
+        )
+        
+        # Bouton de connexion
+        self.btn_connexion = customtkinter.CTkButton(
+            self.root, 
+            text="Connexion", 
+            command=self.logging,
+            fg_color="#1E90FF",
+            corner_radius=10,
+            text_color="#FFFFFF",
+            font=("Helvetica", 14)
+        )
+
+        # Organisation des widgets
+        self.label_utilisateur.pack(pady=10)
+        self.input_utilisateur.pack(pady=10)
+        self.label_mot_de_passe.pack(pady=10)
+        self.input_mot_de_passe.pack(pady=10)
+        self.btn_connexion.pack(pady=20)
+        self.message_bienvenue.pack(pady=20)
+        
     def create_connection(self, utilisateur, mot_de_passe):
+        # Création d'une connexion à RabbitMQ
         credentials = pika.PlainCredentials(utilisateur, mot_de_passe)
         connection_params = pika.ConnectionParameters("localhost", credentials=credentials)
         try:
             return pika.BlockingConnection(connection_params)
         except pika.exceptions.AMQPConnectionError:
-            print("Erreur de connexion à RabbitMQ")
+            print("Erreur de la connexion à RabbitMQ")
             return None
-            
-    # Envoi de messages
+
     def envoie(self):
-        # Crée une nouvelle connexion pour l'envoi
+        # Envoi de messages
         connection = self.create_connection(self.input_utilisateur.get(), self.input_mot_de_passe.get())
         if not connection:
             return
         channel = connection.channel()
         channel.exchange_declare(exchange="direct", exchange_type="topic")
 
-        
-        
         message = json.dumps({"utilisateur": self.input_utilisateur.get(), "message": self.entry.get()})
-        self.entry.delete(0, "end")  # Efface le message de la zone de texte
+        self.entry.delete(0, "end")  # Efface le message après l'envoi
         channel.basic_publish(exchange="direct", routing_key=self.current_discussion, body=message,
-                                properties=pika.BasicProperties(
-                                        delivery_mode=pika.DeliveryMode.Persistent,
-                                    ),                              
-                              )
+                              properties=pika.BasicProperties(
+                                  delivery_mode=pika.DeliveryMode.Persistent,
+                              ))
         connection.close()  # Ferme la connexion après l'envoi
 
-    # Réception de messages
-    def reception(self,discussion="all"):
+    def reception(self, discussion="all"):
+        # Réception de messages
         connection = self.create_connection(self.input_utilisateur.get(), self.input_mot_de_passe.get())
         channel = connection.channel()
         channel.exchange_declare(exchange="direct", exchange_type="topic")
@@ -85,119 +156,127 @@ class Messagerie:
         channel.queue_bind(exchange="direct", queue=queue_name, routing_key=discussion)
 
         def callback(ch, method, properties, body):
-            message =json.loads(body.decode())
+            message = json.loads(body.decode())
             utilisateur = message["utilisateur"]
             message_data = message["message"]
             date = datetime.datetime.now().strftime("%H:%M:%S")
             message_display = f"{date} - {utilisateur}: {message_data}"
-            self.root.after(0, self.add_message, discussion, message_display) 
+            self.root.after(0, self.add_message, discussion, message_display)
 
         channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
         channel.start_consuming()
 
-    def add_message(self,discussion, message):
-        # Ajoute le message au dictionnaire de la discussion
+    def add_message(self, discussion, message):
+        # Ajoute le message à la discussion
         if discussion not in self.discussion_list:
             self.discussion_list[discussion] = []
         self.discussion_list[discussion].append(message)
 
-        # Vérifie si la discussion actuelle est celle reçue et met à jour la textbox
+        # Si la discussion actuelle est celle en cours, met à jour la zone de texte
         if discussion == self.current_discussion:
             self.print_message(message)
-        
-    # Affiche un message dans l'interface graphique
 
-        
-    def print_message(self,message):
+    def print_message(self, message):
+        # Affiche un message dans la zone de texte
         self.textbox.configure(state="normal")
         self.textbox.insert("end", f"{message}\n")
         self.textbox.configure(state="disabled")
 
-    
     def switch_discussion(self, user):
-        # alphabetically sort the users
-        self.users[self.current_user].configure(fg_color="green")
+        # Change la discussion active
+        self.users[self.current_user].configure(fg_color="#1E1E1E")
         self.current_discussion = self.getDiscussion(user)
         self.current_user = user
-        self.users[user].configure(fg_color="orange")
+        self.users[user].configure(fg_color="#FFA500")
         self.refresh_discussion()
-        # restart the reception
-        # threading.Thread(target=self.reception, daemon=True).start()
-    
+
     def refresh_discussion(self):
-        # Nettoie la textbox et affiche tous les messages pour la discussion actuelle
+        # Met à jour la zone de texte pour afficher les messages de la discussion actuelle
         self.textbox.configure(state="normal")
-        self.textbox.delete("1.0", "end")  # Supprime le contenu actuel
+        self.textbox.delete("1.0", "end")
         for message in self.discussion_list.get(self.current_discussion, []):
             self.textbox.insert("end", f"{message}\n")
         self.textbox.configure(state="disabled")
+
     def getDiscussion(self, user):
-        la_users = sorted([user,self.input_utilisateur.get()], key=str.lower)
+        # Détermine la clé de la discussion basée sur les utilisateurs impliqués
+        la_users = sorted([user, self.input_utilisateur.get()], key=str.lower)
         new_discussion = f"{la_users[0]}_{la_users[1]}"
-        if(user == "all"):
+        if user == "all":
             new_discussion = "all"
         return new_discussion
-        
+
     def logging(self):
+        # Gère la connexion de l'utilisateur
         if self.create_connection(self.input_utilisateur.get(), self.input_mot_de_passe.get()):
             print("Connexion réussie")
-            # masquer les champs de connexion
+            # Masquer les champs de connexion
             self.label_utilisateur.pack_forget()
             self.input_utilisateur.pack_forget()
             self.label_mot_de_passe.pack_forget()
             self.input_mot_de_passe.pack_forget()
             self.btn_connexion.pack_forget()
-            # afficher les champs d'envoi
-            self.message_bienvenue.configure(text="Bienvenue, vous êtes connecté en tant que " + self.input_utilisateur.get())
-            self.textbox.pack()
-            self.entry.pack()
-            self.button1.pack()
-            self.users["all"] = customtkinter.CTkButton(self.root, text="General",
-                                                   width=100, height=50,
-                                                   fg_color="orange",
-                                                   command=lambda: self.switch_discussion("all"))
-            self.users["all"].pack()
+            
+            # Afficher les champs d'envoi et le message de bienvenue
+            self.message_bienvenue.configure(text="Bienvenue ! Vous êtes connecté en tant que " + self.input_utilisateur.get())
+            self.message_bienvenue.pack(pady=10)
+            self.textbox.pack(pady=10)
+            self.entry.pack(pady=10)
+            self.button1.pack(pady=10)
+            
+            # Créer un bouton pour le chat général
+            self.users["all"] = customtkinter.CTkButton(
+                self.root, 
+                text="Général",
+                width=120, 
+                height=50,
+                fg_color="#FFA500",
+                corner_radius=10,
+                command=lambda: self.switch_discussion("all")
+            )
+            self.users["all"].pack(pady=10)
             self.getAllUser()
             threading.Thread(target=self.reception, daemon=True).start()
+            
+            # Créer un bouton pour chaque utilisateur
             for user in self.AllUser:
-               self.users[user]=(customtkinter.CTkButton(self.root, text=user,
-                                                         width=100, height=50,
-                                                         fg_color="green",
-                                                         command=lambda user=user: self.switch_discussion(user)))
-               self.users[user].pack()
-               print(user)
-               discussion = self.getDiscussion(user)
-               print(discussion)
-               threading.Thread(target=self.reception, args=(discussion,), daemon=True).start()
-               print("thread started")
+                self.users[user] = customtkinter.CTkButton(
+                    self.root, 
+                    text=user,
+                    width=120, 
+                    height=50,
+                    fg_color="#1E1E1E",
+                    corner_radius=10,
+                    command=lambda user=user: self.switch_discussion(user)
+                )
+                self.users[user].pack(pady=5)
+                discussion = self.getDiscussion(user)
+                threading.Thread(target=self.reception, args=(discussion,), daemon=True).start()
             self.getConectedUser()
         else:
             print("Connexion échouée")
             self.input_mot_de_passe.delete(0, "end")
             self.input_utilisateur.delete(0, "end")
-            self.message_bienvenue.configure(text="Connexion échouée, veuillez réessayer")
-            
-            
-    
-            
+            self.message_bienvenue.configure(text="Connexion échouée... Veuillez réessayer")
+
     def getAllUser(self):
+        # Récupère la liste de tous les utilisateurs
         api_url = "http://localhost:15672/api/users/"
         response = requests.get(api_url, auth=(self.input_utilisateur.get(), self.input_mot_de_passe.get()))
-        print(response.json())
         for user in response.json():
             self.AllUser.append(str(user["name"]))
         self.AllUser.remove(self.input_utilisateur.get())
         return response.json()
-    
+
     def getConectedUser(self):
+        # Récupère la liste des utilisateurs connectés
         api_url = "http://localhost:15672/api/connections/"
         response = requests.get(api_url, auth=(self.input_utilisateur.get(), self.input_mot_de_passe.get()))
         for user in response.json():
             self.connected_user.append(str(user["user"]))
-        # enlever les doublons
+        # Supprime les doublons
         self.connected_user = list(dict.fromkeys(self.connected_user))
         print(self.connected_user)
         return response.json()
 
 app = Messagerie()
-

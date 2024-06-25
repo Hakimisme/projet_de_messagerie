@@ -14,7 +14,7 @@ queue_name = result.method.queue
 
 channel.queue_bind(exchange='direct', queue=queue_name,routing_key="#")
 
-print(' [*] Waiting for logs. To exit press CTRL+C')
+print(' [*] En attente... Pour quitter, appuyez sur CTRL+C')
 
 def callback(ch, method, properties, body):
     # routing_key, message, date
